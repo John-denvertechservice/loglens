@@ -1,0 +1,7 @@
+Mar 18 12:01:15 server1 sshd[12345]: Failed password for admin from 192.168.1.50 port 54321 ssh2
+Mar 18 12:02:10 server1 sshd[12346]: Accepted password for john from 192.168.1.100 port 53211 ssh2
+Mar 18 12:03:45 server1 sshd[12347]: Failed password for root from 10.0.0.5 port 60000 ssh2
+Mar 18 12:05:01 server1 sshd[12348]: Failed password for admin from 192.168.1.50 port 54322 ssh2
+Mar 18 12:06:33 server1 sshd[12349]: Accepted password for alice from 172.16.0.2 port 51000 ssh2
+Mar 18 12:08:12 server1 sshd[12350]: Failed password for admin from 192.168.1.50 port 54323 ssh2
+
