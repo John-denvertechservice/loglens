@@ -16,7 +16,7 @@ def detect_bruteforce(events: List[Dict], threshold: int = 3):
         if count >= threshold
     ]
 
-def detect_user_targeting(events: List[Dict], threshold: int = 3)
+def detect_user_targeting(events: List[Dict], threshold: int = 3):
 
     usernames = [
     event["username"]
@@ -32,7 +32,7 @@ def detect_user_targeting(events: List[Dict], threshold: int = 3)
         if count >= threshold
     ]
 
-def detect_ip_spread(events: List[Dict], threshold: int = 3)
+def detect_ip_spread(events: List[Dict], threshold: int = 3):
     ip_to_users = {}
 
     for event in events:
@@ -53,7 +53,7 @@ def detect_ip_spread(events: List[Dict], threshold: int = 3)
         if len(users) >= threshold
     ]
 
-def run_all_detections(events: List[Dict])
+def run_all_detections(events: List[Dict]):
     return {
         "bruteforce_ips": detect_bruteforce(events),
         "targeting_users": detect_user_targeting(events), 
