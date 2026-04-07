@@ -1,5 +1,4 @@
-from flask import Flask, request, jsonify
-
+from flask import Flask, request, jsonify, render_template
 from loglens.parsers.auth_parser import AuthParser
 from loglens.analyzers.stats import summary
 from loglens.analyzers.detections import run_all_detections
@@ -8,8 +7,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-
-    return {"message": "LogLens API is running"}
+    return render_template("index.html")
 
 
 @app.route("/api/analyze", methods=["POST"])
