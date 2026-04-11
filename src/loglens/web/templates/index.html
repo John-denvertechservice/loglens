@@ -10,6 +10,7 @@
             color: #e2e8f0;
             padding: 40px;
         }
+
         h1 {
             color: #38bdf8;
         }
@@ -53,6 +54,68 @@
             overflow-x: auto;    
         }
 
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            background: #0f172a;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+
+        .metric-card h3 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        .metric-card p {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+            color: #e2e8f0;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-top: 24px;
+            margin-bottom: 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #0f172a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+
+        th {
+            background: #1e293b;
+            color: #38bdf8;
+        }
+
+        .alert {
+            background: #7f1d1d;
+            color: #fecaca;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border: 1px solid #b91c1c;
+        }
     </style>
 </head>
 <body>
@@ -62,33 +125,162 @@
     <p>Upload a log file to analyze activity and detect suspicious behavior.</p>
 
     <div class="card">
-        <form id="uploadForm">
+        <form id="uploadForm" enctype="multipart/form-data">
             <label>Select log file:</label><br>
             <input type="file" name="file" required><br>
             <button type="submit">Analyze</button>
         </form>
     </div>
 
-    <div class="card">
-        <h2>Results</h2>
-        <pre id="output">No data yet.</pre>
+<div class="card">
+    <h2>Results</h2>
+
+    <div id="summaryCards" class="summary-grid"></div>
+
+    <div id="alerts"></div>
+
+    <div class="results-grid">
+        <div>
+            <h3>Top Source IPs</h3>
+            <table id="ipTable">
+                <thead>
+                    <tr>
+                        <th>IP Address</th>
+                        <th>Count</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div>
+            <h3>Event Types</h3>
+            <table id="eventTypeTable">
+                <thead>
+                    <tr>
+                        <th>Event Type</th>
+                        <th>Count</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
     </div>
+
+    <h3>Raw JSON</h3>
+    <pre id="output">No data yet.</pre>
 </div>
 
 <script>
-    document.getElementById("uploadForm").addEventListener("submit", async function(e) {
-        e.preventDefault();
+function renderSummaryCards(summary) {
+    const summaryCards = document.getElementById("summaryCards");
+    summaryCards.innerHTML = "";
 
-        const formData = new formData(this);
+    const cards = [
+        { label: "Total Events", value: summary.total_events },
+        { label: "Failed Logins", value: summary.event_types.failed_login || 0 },
+        { label: "Successful Logins", value: summary.event_types.successful_login || 0 },
+        { label: "Top IP", value: summary.top_source_ips[0]?.ip || "N/A" }
+    ];
 
+    for (const card of cards) {
+        const div = document.createElement("div");
+        div.className = "metric-card";
+        div.innerHTML = `
+            <h3>${card.label}</h3>
+            <p>${card.value}</p>
+        `;
+        summaryCards.appendChild(div);
+    }
+}
+
+function renderAlerts(detections) {
+    const alerts = document.getElementById("alerts");
+    alerts.innerHTML = "";
+
+    const hasBruteforce = detections.bruteforce_ips.length > 0;
+    const hasTargeting = detections.targeting_users.length > 0;
+    const hasSpread = detections.ip_spread.length > 0;
+
+    if (!hasBruteforce && !hasTargeting && !hasSpread) {
+        alerts.innerHTML = `<div class="alert" style="background:#14532d; color:#bbf7d0; border-color:#166534;">No major detections triggered.</div>`;
+        return;
+    }
+
+    for (const item of detections.bruteforce_ips) {
+        const div = document.createElement("div");
+        div.className = "alert";
+        div.textContent = `Brute-force suspected from ${item.ip} with ${item.failed_attempts} failed attempts.`;
+        alerts.appendChild(div);
+    }
+
+    for (const item of detections.targeting_users) {
+        const div = document.createElement("div");
+        div.className = "alert";
+        div.textContent = `User targeting detected for ${item.username} with ${item.failed_attempts} failed attempts.`;
+        alerts.appendChild(div);
+    }
+
+    for (const item of detections.ip_spread) {
+        const div = document.createElement("div");
+        div.className = "alert";
+        div.textContent = `IP spread detected from ${item.ip} across ${item.unique_users} usernames.`;
+        alerts.appendChild(div);
+    }
+}
+
+function renderIpTable(topIps) {
+    const tbody = document.querySelector("#ipTable tbody");
+    tbody.innerHTML = "";
+
+    for (const item of topIps) {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${item.ip}</td>
+            <td>${item.count}</td>
+        `;
+        tbody.appendChild(row);
+    }
+}
+
+function renderEventTypeTable(eventTypes) {
+    const tbody = document.querySelector("#eventTypeTable tbody");
+    tbody.innerHTML = "";
+
+    for (const [eventType, count] of Object.entries(eventTypes)) {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${eventType}</td>
+            <td>${count}</td>
+        `;
+        tbody.appendChild(row);
+    }
+}
+
+document.getElementById("uploadForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+
+    try {
         const response = await fetch("/api/analyze", {
             method: "POST",
             body: formData
         });
+
         const data = await response.json();
 
-        document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+        renderSummaryCards(data.summary);
+        renderAlerts(data.detections);
+        renderIpTable(data.summary.top_source_ips);
+        renderEventTypeTable(data.summary.event_types);
 
+        document.getElementById("output").textContent =
+            JSON.stringify(data, null, 2);
+    } catch (error) {
+        document.getElementById("output").textContent =
+            "Error: " + error.message;
+    }
 });
 </script>
 </body>
